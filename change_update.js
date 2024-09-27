@@ -3,6 +3,7 @@ const readline = require('readline');
 
 // 替换为你的 MQTT 服务器地址和端口
 const mqttServerUrl = 'mqtt://60.204.251.153';
+const topic = 'device/ele_run';  // 替换为ESP32发送数据的主题
 const configTopic = 'device/config';  // 发送新的配置参数的主题
 const configResponseTopic = 'device/config_response';  // 接收 ESP32 返回的参数
 const confirmationTopic = 'device/config_confirmation';  // 确认参数的主题
@@ -37,6 +38,15 @@ rl.question('请输入1以发送新的配置，0保持现有逻辑：', (input) 
         client.on('connect', () => {
             console.log(`Connected to MQTT server with Client ID: ${clientId}`);
             
+            // 订阅特定的主题
+            client.subscribe(topic, (err) => {
+                if (!err) {
+                    console.log(`Subscribed to topic: ${topic}`);
+                } else {
+                    console.log(`Failed to subscribe: ${err}`);
+                }
+            });
+
             // 订阅配置响应主题
             client.subscribe(configResponseTopic, (err) => {
                 if (!err) {
@@ -61,6 +71,20 @@ rl.question('请输入1以发送新的配置，0保持现有逻辑：', (input) 
             });
         });
     } else {
+        // 保持原有逻辑，不发送配置，只订阅device/ele_run主题
+        client.on('connect', () => {
+            console.log(`Connected to MQTT server with Client ID: ${clientId}`);
+
+            // 订阅特定的主题
+            client.subscribe(topic, (err) => {
+                if (!err) {
+                    console.log(`Subscribed to topic: ${topic}`);
+                } else {
+                    console.log(`Failed to subscribe: ${err}`);
+                }
+            });
+        });
+
         console.log('保持现有逻辑，不发送新配置。');
     }
 
@@ -69,15 +93,14 @@ rl.question('请输入1以发送新的配置，0保持现有逻辑：', (input) 
 
 // 监听收到的消息
 client.on('message', (topic, message) => {
-    const receivedMessage = message.toString();
     console.log(`Client ID: ${clientId}, Received message on topic ${topic}: ${message.toString()}`);
 
     // 如果收到的是 ESP32 返回的配置信息
     if (topic === configResponseTopic) {
-        console.log(`Received config response from ESP32: ${receivedMessage}`);
+        console.log(`Received config response from ESP32: ${message.toString()}`);
         
         // 比较发送的参数和接收到的参数
-        if (receivedMessage === sentConfig) {
+        if (message.toString() === sentConfig) {
             console.log('Configuration matches! Sending OK...');
             // 如果参数一致，发送确认消息 "OK"
             client.publish(confirmationTopic, 'OK', (err) => {
@@ -97,3 +120,5 @@ client.on('message', (topic, message) => {
 client.on('close', () => {
     console.log('Disconnected from MQTT server');
 });
+//add
+client.log
