@@ -95,30 +95,43 @@ rl.question('请输入1以发送新的配置，0保持现有逻辑：', (input) 
 client.on('message', (topic, message) => {
     console.log(`Client ID: ${clientId}, Received message on topic ${topic}: ${message.toString()}`);
 
-    // 如果收到的是 ESP32 返回的配置信息
-    if (topic === configResponseTopic) {
-        console.log(`Received config response from ESP32: ${message.toString()}`);
-        
-        // 比较发送的参数和接收到的参数
-        if (message.toString() === sentConfig) {
-            console.log('Configuration matches! Sending OK...');
-            // 如果参数一致，发送确认消息 "OK"
-            client.publish(confirmationTopic, 'OK', (err) => {
-                if (!err) {
-                    console.log('OK sent, configuration confirmed.');
-                } else {
-                    console.log('Failed to send OK:', err);
-                }
-            });
-        } else {
-            console.log('Configuration does not match, retrying...');
-        }
+  // 如果收到的是 ESP32 返回的配置信息
+  if (topic === configResponseTopic) {
+    console.log(`Received config response from ESP32: ${message.toString()}`);
+    
+    // 比较发送的参数和接收到的参数
+    if (message.toString() === sentConfig) {
+        console.log('Configuration matches!');
+
+        // 添加二次确认逻辑
+        const rlConfirm = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+
+        // 提示用户确认是否发送 "OK"
+        rlConfirm.question('配置匹配，是否发送确认消息 OK？(1: 确认, 0: 取消)：', (confirmInput) => {
+            if (confirmInput === '1') {
+                // 如果用户确认发送 OK
+                client.publish(confirmationTopic, 'OK', (err) => {
+                    if (!err) {
+                        console.log('OK sent, configuration confirmed.');
+                    } else {
+                        console.log('Failed to send OK:', err);
+                    }
+                });
+            } else {
+                console.log('用户取消了发送 OK。');
+            }
+            rlConfirm.close();
+        });
+    } else {
+        console.log('Configuration does not match, retrying...');
     }
+}
 });
 
 // 处理断开连接
 client.on('close', () => {
     console.log('Disconnected from MQTT server');
 });
-//add
-client.log
